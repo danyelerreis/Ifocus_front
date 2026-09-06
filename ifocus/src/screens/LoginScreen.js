@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Switch, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import * as SecureStore from 'expo-secure-store'
+import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { login } from '../api/authApi'
 import { colors } from '../theme/colors'
 
@@ -9,12 +11,39 @@ export default function LoginScreen({ navigation }) {
   const [lembrar, setLembrar] = useState(false)
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
+  const [mostrarSenha, setMostrarSenha] = useState(false)
+
+  useEffect(() => {
+    async function carregarCredenciais() {
+      try {
+        const emailSalvo = await SecureStore.getItemAsync('emailUsuario')
+        const senhaSalva = await SecureStore.getItemAsync('senhaUsuario')
+        if (emailSalvo && senhaSalva) {
+          setEmailOuCpf(emailSalvo)
+          setSenha(senhaSalva)
+          setLembrar(true)
+        }
+      } catch (e) {
+        console.log('Erro ao carregar dados locais')
+      }
+    }
+    carregarCredenciais()
+  }, [])
 
   async function handleEntrar() {
     setErro('')
     setCarregando(true)
     try {
       await login(emailOuCpf, senha)
+      
+      if (lembrar) {
+        await SecureStore.setItemAsync('emailUsuario', emailOuCpf)
+        await SecureStore.setItemAsync('senhaUsuario', senha)
+      } else {
+        await SecureStore.deleteItemAsync('emailUsuario')
+        await SecureStore.deleteItemAsync('senhaUsuario')
+      }
+
       navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })
     } catch (e) {
       setErro('Não foi possível entrar. Confira seus dados.')
@@ -52,8 +81,15 @@ export default function LoginScreen({ navigation }) {
               placeholder="Senha"
               value={senha}
               onChangeText={setSenha}
-              secureTextEntry
+              secureTextEntry={!mostrarSenha}
             />
+            <TouchableOpacity onPress={() => setMostrarSenha(!mostrarSenha)}>
+              <MaterialCommunityIcons
+                name={mostrarSenha ? 'eye-off-outline' : 'eye-outline'}
+                size={20}
+                color="#666"
+              />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.checkboxRow}>
@@ -67,7 +103,7 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.btnPrimaryText}>{carregando ? 'Entrando...' : 'Acessar'}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('CriarConta')}>
             <Text style={styles.link}>Criar conta</Text>
           </TouchableOpacity>
         </View>

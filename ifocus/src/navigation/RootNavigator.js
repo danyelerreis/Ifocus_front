@@ -5,6 +5,7 @@ import CalendarioScreen from '../screens/CalendarioScreen'
 import PerfilScreen from '../screens/PerfilScreen'
 import NotificacoesScreen from '../screens/NotificacoesScreen'
 import ConfigNotificacoesScreen from '../screens/ConfigNotificacoesScreen'
+import CriarContaScreen from '../screens/CriarContaScreen'
 
 const Stack = createNativeStackNavigator()
 
@@ -31,6 +32,7 @@ export default function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="CriarConta" component={CriarContaScreen} />
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen name="Calendario" component={CalendarioScreen} />
       <Stack.Screen name="Perfil" component={PerfilScreen} />
