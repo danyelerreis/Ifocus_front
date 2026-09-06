@@ -1,16 +1,23 @@
 import { useEffect, useState, useCallback } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform } from 'react-native'
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Modal, TextInput, Switch} from 'react-native'
 import { listarEventos, criarEvento, removerEvento } from '../api/eventsApi'
 import Header from '../components/Header'
 import { colors } from '../theme/colors'
 
 const HOJE = '2024-02-20'
 const CATEGORIAS = ['Todos', 'Pessoal', 'Escola']
+const CATEGORIAS_FORM = ['Pessoal', 'Escola']
 
 export default function CronogramaScreen({ navigation }) {
   const [eventos, setEventos] = useState([])
   const [filtro, setFiltro] = useState('Todos')
   const [carregando, setCarregando] = useState(true)
+  const [modalVisivel, setModalVisivel] = useState(false)
+  const [mostrarSeletorCategoria, setMostrarSeletorCategoria] = useState(false)
+  const [nome, setNome] = useState('')
+  const [descricao, setDescricao] = useState('')
+  const [categoriaForm, setCategoriaForm] = useState('Pessoal')
+  const [notificar, setNotificar] = useState(true)
 
   const carregar = useCallback(() => {
     listarEventos(HOJE).then((r) => {
@@ -21,17 +28,36 @@ export default function CronogramaScreen({ navigation }) {
 
   useEffect(() => { carregar() }, [carregar])
 
-  async function handleNovo() {
-    if (Platform.OS === 'ios' && Alert.prompt) {
-      Alert.prompt('Novo evento', 'Nome do evento:', async (titulo) => {
-        if (!titulo) return
-        const novo = await criarEvento({ categoria: 'Pessoal', titulo, data: HOJE, inicio: '19:00', fim: '20:00' })
-        setEventos((prev) => [...prev, novo])
-      })
-    } else {
-      const novo = await criarEvento({ categoria: 'Pessoal', titulo: 'Novo evento', data: HOJE, inicio: '19:00', fim: '20:00' })
-      setEventos((prev) => [...prev, novo])
+  function abrirModal() {
+    setNome('')
+    setDescricao('')
+    setCategoriaForm('Pessoal')
+    setNotificar(true)
+    setMostrarSeletorCategoria(false)
+    setModalVisivel(true)
+  }
+
+  function fecharModal() {
+    setModalVisivel(false)
+    setMostrarSeletorCategoria(false)
+  }
+
+  async function handleCriar() {
+    if (!nome.trim()) {
+      Alert.alert('Ops', 'Dê um nome para o compromisso.')
+      return
     }
+    const novo = await criarEvento({
+      categoria: categoriaForm,
+      titulo: nome.trim(),
+      descricao: descricao.trim(),
+      notificar,
+      data: HOJE,
+      inicio: '19:00',
+      fim: '20:00',
+    })
+    setEventos((prev) => [...prev, novo])
+    fecharModal()
   }
 
   function handleRemover(id) {
@@ -67,7 +93,7 @@ export default function CronogramaScreen({ navigation }) {
               <Text style={[styles.chipText, filtro === c && styles.chipTextActive]}>{c}</Text>
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={[styles.chip, styles.chipOutline]} onPress={handleNovo}>
+          <TouchableOpacity style={[styles.chip, styles.chipOutline]} onPress={abrirModal}>
             <Text style={styles.chipText}>+ Novo</Text>
           </TouchableOpacity>
         </View>
@@ -83,11 +109,81 @@ export default function CronogramaScreen({ navigation }) {
               <Text style={styles.eventTime}>🕐 {ev.inicio} - {ev.fim}</Text>
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={styles.fab} onPress={handleNovo}>
+          <TouchableOpacity style={styles.fab} onPress={abrirModal}>
             <Text style={styles.fabText}>+</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
+      <Modal visible={modalVisivel} animationType="slide" transparent onRequestClose={fecharModal}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Adicionar Compromisso</Text>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Nome do Compromisso"
+              placeholderTextColor={colors.muted}
+              value={nome}
+              onChangeText={setNome}
+            />
+
+            <TextInput
+              style={[styles.input, styles.inputArea]}
+              placeholder="Descrição"
+              placeholderTextColor={colors.muted}
+              value={descricao}
+              onChangeText={setDescricao}
+              multiline
+              numberOfLines={4}
+            />
+
+            <View style={styles.escolherRow}>
+              <Text style={styles.escolherLabel}>Escolher Compromisso</Text>
+              <TouchableOpacity
+                style={styles.escolherBtn}
+                onPress={() => setMostrarSeletorCategoria((v) => !v)}
+              >
+                <Text style={styles.escolherBtnText}>{categoriaForm}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {mostrarSeletorCategoria && (
+              <View style={styles.categoriaOpcoes}>
+                {CATEGORIAS_FORM.map((c) => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.categoriaOpcao, categoriaForm === c && styles.categoriaOpcaoAtiva]}
+                    onPress={() => {
+                      setCategoriaForm(c)
+                      setMostrarSeletorCategoria(false)
+                    }}
+                  >
+                    <Text style={[styles.categoriaOpcaoText, categoriaForm === c && styles.categoriaOpcaoTextAtiva]}>{c}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            <View style={styles.notificarRow}>
+              <Text style={styles.escolherLabel}>Me Notificar</Text>
+              <Switch
+                value={notificar}
+                onValueChange={setNotificar}
+                trackColor={{ false: colors.light2, true: colors.mid }}
+                thumbColor={colors.white}
+              />
+            </View>
+
+            <TouchableOpacity style={styles.criarBtn} onPress={handleCriar}>
+              <Text style={styles.criarBtnText}>Criar</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelarBtn} onPress={fecharModal}>
+              <Text style={styles.cancelarBtnText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -114,4 +210,23 @@ const styles = StyleSheet.create({
   eventTime: { fontSize: 12, marginTop: 4, color: colors.text },
   fab: { backgroundColor: colors.dark2, borderRadius: 999, paddingVertical: 10, alignItems: 'center', marginTop: 4 },
   fabText: { color: '#fff', fontSize: 16 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
+  modalCard: { backgroundColor: colors.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 22, paddingBottom: 32 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 18 },
+  input: { backgroundColor: colors.light2, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 14, color: colors.text },
+  inputArea: { minHeight: 90, textAlignVertical: 'top' },
+  escolherRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  escolherLabel: { color: colors.text, fontWeight: '600' },
+  escolherBtn: { backgroundColor: colors.dark2, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 16 },
+  escolherBtnText: { color: '#fff', fontWeight: '600' },
+  categoriaOpcoes: { flexDirection: 'row', gap: 8, marginBottom: 14 },
+  categoriaOpcao: { borderWidth: 1, borderColor: colors.dark2, borderRadius: 8, paddingVertical: 6, paddingHorizontal: 12 },
+  categoriaOpcaoAtiva: { backgroundColor: colors.dark2 },
+  categoriaOpcaoText: { color: colors.dark2, fontSize: 13 },
+  categoriaOpcaoTextAtiva: { color: '#fff' },
+  notificarRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 24 },
+  criarBtn: { backgroundColor: colors.mid, borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
+  criarBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  cancelarBtn: { alignItems: 'center', paddingVertical: 4 },
+  cancelarBtnText: { color: colors.muted, fontSize: 13 },
 })
