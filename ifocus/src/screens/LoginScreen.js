@@ -30,27 +30,34 @@ export default function LoginScreen({ navigation }) {
     carregarCredenciais()
   }, [])
 
-  async function handleEntrar() {
-    setErro('')
-    setCarregando(true)
-    try {
-      await login(emailOuCpf, senha)
-      
-      if (lembrar) {
-        await SecureStore.setItemAsync('emailUsuario', emailOuCpf)
-        await SecureStore.setItemAsync('senhaUsuario', senha)
-      } else {
-        await SecureStore.deleteItemAsync('emailUsuario')
-        await SecureStore.deleteItemAsync('senhaUsuario')
-      }
-
-      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })
-    } catch (e) {
-      setErro('Não foi possível entrar. Confira seus dados.')
-    } finally {
-      setCarregando(false)
-    }
+async function handleEntrar() {
+  setErro('')
+  
+  if (!emailOuCpf.trim() || !senha.trim()) {
+    setErro('Preencha o usuário e a senha.')
+    return
   }
+
+  setCarregando(true)
+  try {
+    await login(emailOuCpf, senha)
+
+    if (lembrar) {
+      await SecureStore.setItemAsync('emailUsuario', emailOuCpf)
+      await SecureStore.setItemAsync('senhaUsuario', senha)
+    } else {
+      await SecureStore.deleteItemAsync('emailUsuario')
+      await SecureStore.deleteItemAsync('senhaUsuario')
+    }
+
+    navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] })
+  } catch (e) {
+    // Exibe a mensagem de erro da validação no estado da tela
+    setErro(e.message || 'Erro ao realizar login.')
+  } finally {
+    setCarregando(false)
+  }
+}
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -122,7 +129,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, paddingVertical: 12, marginLeft: 6 },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   checkboxLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 13 },
-  error: { color: '#ffb3b3', marginBottom: 10, fontSize: 13 },
+  error: { color: '#ffb3b3', marginBottom: 10, fontSize: 13, textAlign: 'center' },
   btnPrimary: { backgroundColor: colors.light2, borderRadius: 999, paddingVertical: 14, alignItems: 'center' },
   btnPrimaryText: { color: colors.dark, fontWeight: '700' },
   link: { color: 'rgba(255,255,255,0.7)', textAlign: 'center', marginTop: 14 },

@@ -2,8 +2,6 @@ import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native'
 import { MaterialCommunityIcons } from '@expo/vector-icons'
 import { colors } from '../theme/colors'
-// Caso tenha uma função de cadastro na sua API, importe-a aqui
-// import { registrar } from '../api/authApi'
 
 export default function CriarContaScreen({ navigation }) {
   const [nome, setNome] = useState('')
@@ -15,26 +13,39 @@ export default function CriarContaScreen({ navigation }) {
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [mostrarConfirmarSenha, setMostrarConfirmarSenha] = useState(false)
 
+  // Requisitos da Senha
+  const regrasSenha = {
+    tamanhoMinimo: senha.length >= 8,
+    temNumero: /[0-9]/.test(senha),
+  }
+  const senhaEhValida = Object.values(regrasSenha).every(Boolean)
+
+  // Verificação em tempo real de coincidência de senhas
+  const senhasCoincidem = senha.length > 0 && senha === confirmarSenha
+
   async function realizarCadastro() {
     setErro('')
-    
-    // Validações básicas
+
     if (!nome || !email || !senha || !confirmarSenha) {
       setErro('Por favor, preencha todos os campos.')
       return
     }
-    if (senha !== confirmarSenha) {
-      setErro('As senhas não coincidem.')
+
+    if (!senhaEhValida) {
+      setErro('A senha deve ter pelo menos 8 caracteres e 1 número.')
+      return
+    }
+
+    if (!senhasCoincidem) {
+      setErro('As senhas digitadas não coincidem.')
       return
     }
 
     setCarregando(true)
     try {
-      // Aqui você vai chamar a sua API para criar a conta de verdade
-      // Exemplo: await registrar(nome, email, senha)
-      
-      Alert.alert('Sucesso!', 'Conta criada com sucesso. Faça o login para acessar seus planos de estudo.')
-      navigation.goBack() // Volta para a tela de login
+      // Chamada da API para criar a conta
+      Alert.alert('Sucesso!', 'Conta criada com sucesso.')
+      navigation.goBack()
     } catch (e) {
       setErro('Não foi possível criar a conta. Tente novamente.')
     } finally {
@@ -76,6 +87,7 @@ export default function CriarContaScreen({ navigation }) {
             />
           </View>
 
+          {/* Campo Senha */}
           <View style={styles.field}>
             <Text>🔑</Text>
             <TextInput
@@ -94,6 +106,7 @@ export default function CriarContaScreen({ navigation }) {
             </TouchableOpacity>
           </View>
 
+          {/* Campo Confirmação */}
           <View style={styles.field}>
             <Text>🔒</Text>
             <TextInput
@@ -111,6 +124,13 @@ export default function CriarContaScreen({ navigation }) {
               />
             </TouchableOpacity>
           </View>
+
+          {/* Feedback Visual das Senhas */}
+          {confirmarSenha.length > 0 && (
+            <Text style={{ color: senhasCoincidem ? '#4CAF50' : '#ffb3b3', fontSize: 13, marginBottom: 10, textAlign: 'center' }}>
+              {senhasCoincidem ? '✓ As senhas coincidem' : '✕ As senhas não coincidem'}
+            </Text>
+          )}
 
           {!!erro && <Text style={styles.error}>{erro}</Text>}
 

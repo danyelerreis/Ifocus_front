@@ -1,85 +1,103 @@
-import { useEffect, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Platform } from 'react-native'
-import { buscarPerfil, atualizarPerfil } from '../api/profileApi'
-import Header from '../components/Header'
+import { useState } from 'react'
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native'
+import * as SecureStore from 'expo-secure-store'
 import { colors } from '../theme/colors'
 
-export default function PerfilScreen({ navigation }) {
-  const [perfil, setPerfil] = useState(null)
-  const [verSenha, setVerSenha] = useState(false)
+export default function PerfilScreen() {
+  const [senhaAtual, setSenhaAtual] = useState('')
+  const [novaSenha, setNovaSenha] = useState('')
+  const [confirmarNovaSenha, setConfirmarNovaSenha] = useState('')
+  const [carregando, setCarregando] = useState(false)
+  const [mensagem, setMensagem] = useState('')
 
-  useEffect(() => { buscarPerfil().then(setPerfil) }, [])
+  async function handleAlterarSenha() {
+    setMensagem('')
 
-  async function handleEditarEmail() {
-    if (Platform.OS === 'ios' && Alert.prompt) {
-      Alert.prompt('Novo e-mail', '', async (novo) => {
-        if (!novo) return
-        setPerfil(await atualizarPerfil({ email: novo }))
-      }, 'plain-text', perfil.email)
+    if (!senhaAtual || !novaSenha || !confirmarNovaSenha) {
+      setMensagem('Preencha todos os campos.')
+      return
+    }
+
+    if (novaSenha !== confirmarNovaSenha) {
+      setMensagem('A nova senha e a confirmação não coincidem.')
+      return
+    }
+
+    setCarregando(true)
+    try {
+      // 1. Busca a senha armazenada localmente
+      const senhaSalva = await SecureStore.getItemAsync('senhaUsuario')
+
+      // 2. Verifica se a senha digitada pelo usuário BATE com a salva
+      if (senhaSalva && senhaAtual !== senhaSalva) {
+        setMensagem('A senha atual está incorreta.')
+        setCarregando(false)
+        return
+      }
+
+      // 3. Atualiza no SecureStore (e enviaria para a API em produção)
+      await SecureStore.setItemAsync('senhaUsuario', novaSenha)
+
+      Alert.alert('Sucesso!', 'Sua senha foi alterada com sucesso.')
+      setSenhaAtual('')
+      setNovaSenha('')
+      setConfirmarNovaSenha('')
+    } catch (e) {
+      setMensagem('Erro ao verificar ou alterar a senha.')
+    } finally {
+      setCarregando(false)
     }
   }
 
-  if (!perfil) {
-    return (
-      <View style={styles.container}>
-        <Header navigation={navigation} showBack />
-        <Text style={{ padding: 20 }}>Carregando...</Text>
-      </View>
-    )
-  }
-
   return (
-    <View style={styles.container}>
-      <Header navigation={navigation} showBack title="Perfil" />
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.avatarWrap}>
-          <View style={styles.avatarCircle}><Text style={{ fontSize: 34 }}>👤</Text></View>
-          <View style={styles.avatarCam}><Text>📷</Text></View>
-        </View>
+    <ScrollView style={styles.container}>
+      <Text style={styles.title}>Alterar Senha</Text>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Nome Completo</Text>
-          <Text style={styles.value}>{perfil.nomeCompleto}</Text>
-        </View>
+      <View style={styles.field}>
+        <TextInput
+          style={styles.input}
+          placeholder="Senha Atual"
+          value={senhaAtual}
+          onChangeText={setSenhaAtual}
+          secureTextEntry
+        />
+      </View>
 
-        <View style={styles.field}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Email</Text>
-            <TouchableOpacity onPress={handleEditarEmail}><Text>✎</Text></TouchableOpacity>
-          </View>
-          <Text style={styles.value}>{perfil.email}</Text>
-        </View>
+      <View style={styles.field}>
+        <TextInput
+          style={styles.input}
+          placeholder="Nova Senha"
+          value={novaSenha}
+          onChangeText={setNovaSenha}
+          secureTextEntry
+        />
+      </View>
 
-        <View style={styles.field}>
-          <View style={styles.labelRow}>
-            <Text style={styles.label}>Senha</Text>
-            <TouchableOpacity onPress={() => setVerSenha((v) => !v)}><Text>{verSenha ? '🙈' : '👁'}</Text></TouchableOpacity>
-          </View>
-          <Text style={styles.value}>{verSenha ? 'senha123' : '**********'}</Text>
-        </View>
+      <View style={styles.field}>
+        <TextInput
+          style={styles.input}
+          placeholder="Confirmar Nova Senha"
+          value={confirmarNovaSenha}
+          onChangeText={setConfirmarNovaSenha}
+          secureTextEntry
+        />
+      </View>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>País</Text>
-          <Text style={styles.value}>{perfil.pais}</Text>
-        </View>
+      {!!mensagem && <Text style={styles.error}>{mensagem}</Text>}
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Cidade/Município</Text>
-          <Text style={styles.value}>{perfil.cidade}</Text>
-        </View>
-      </ScrollView>
-    </View>
+      <TouchableOpacity style={styles.btnPrimary} onPress={handleAlterarSenha} disabled={carregando}>
+        <Text style={styles.btnPrimaryText}>{carregando ? 'Salvando...' : 'Atualizar Senha'}</Text>
+      </TouchableOpacity>
+    </ScrollView>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  content: { paddingHorizontal: 20, paddingBottom: 40 },
-  avatarWrap: { alignSelf: 'center', marginVertical: 20 },
-  avatarCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: colors.dark2, alignItems: 'center', justifyContent: 'center' },
-  avatarCam: { position: 'absolute', bottom: -4, right: -4, backgroundColor: '#fff', borderRadius: 12, padding: 4 },
-  field: { marginBottom: 16 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  label: { fontWeight: '700', fontSize: 14, color: colors.text },
-  value: { marginTop: 4, color: colors.muted },
+  container: { flex: 1, backgroundColor: colors.dark, padding: 24 },
+  title: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 20 },
+  field: { backgroundColor: '#fff', borderRadius: 8, paddingHorizontal: 12, marginBottom: 12 },
+  input: { paddingVertical: 12 },
+  error: { color: '#ffb3b3', marginBottom: 10, textAlign: 'center' },
+  btnPrimary: { backgroundColor: colors.light2, borderRadius: 999, paddingVertical: 14, alignItems: 'center', marginTop: 10 },
+  btnPrimaryText: { color: colors.dark, fontWeight: '700' },
 })
