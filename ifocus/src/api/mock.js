@@ -11,12 +11,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
  * para o Spring, através de client.js.
  * ------------------------------------------------------------------
  */
-const KEY = 'study_app_db_v1'
+const KEY = 'study_app_db_v2'
 
 const seed = {
   user: {
     nomeCompleto: 'Usuário da Silva',
     email: 'unknow2478@gmail.com',
+    senha: 'estudos123',
+    cpf: '00000000000',
     pais: 'Brasil',
     cidade: 'Rondonópolis',
   },
